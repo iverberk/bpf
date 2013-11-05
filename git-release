@@ -17,7 +17,7 @@ import re
 import os
 
 prefix = "BPF-PREFIX"
- 
+
 parser = argparse.ArgumentParser(prog='recreate-branch.py',description='GIT (release) branch recreation script')
 
 parser.add_argument('-a','--base', help='A reference to the commit from which the source branch is based, defaults to \'master\'.', required=False, default='master')
@@ -28,7 +28,7 @@ parser.add_argument('-d','--discard', action='store_true', help='Discard the exi
 parser.add_argument('-r','--remote', help='Specify the remote repository to work with. Only works with the -d option.', required=False, default='origin')
 parser.add_argument('-i','--integration', help='Specify a comma seperated list of (integration) branches to pre-fill the rerere cache with.', required=False)
 parser.add_argument('-v','--verbose', action='store_true', help='Show additional (debug) information.', required=False)
-parser.add_argument('-C','--no-rerere-cache', action='store_true', help='Disable prefilling of the rerere cache.', required=False, default=False)
+parser.add_argument('-c','--rerere-cache', action='store_true', help='Disable prefilling of the rerere cache.', required=False, default=False)
 parser.add_argument('source', help='The source branch to recreate.')
 
 args = parser.parse_args()
@@ -156,7 +156,7 @@ if args.branch != args.source and branchExists(args.branch):
     terminate("Cannot create branch %s as it already exists." % args.branch)
 
 # Check if we can pre-fill the rerere cache
-if not args.no_rerere_cache:
+if args.no_rerere_cache:
     print "\n* Pre-filling the rerere cache\n"
 
     # Always learn from the source branch
@@ -179,7 +179,7 @@ if not args.no_rerere_cache:
         merges = run(['git', 'rev-list', '--parents', args.base + '..' + rerere_branch])
         if not merges:
             print "Could not find any merge commits."
-        else:    
+        else:
             merges = merges.strip()
             for commits in merges.split('\n'):
                 parents = re.split('\s',commits)
