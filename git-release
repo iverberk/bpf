@@ -18,7 +18,7 @@ import os
 
 prefix = "BPF-PREFIX"
 
-parser = argparse.ArgumentParser(prog='recreate-branch.py',description='GIT (release) branch recreation script')
+parser = argparse.ArgumentParser(prog='git release')
 
 parser.add_argument('-a','--base', help='A reference to the commit from which the source branch is based, defaults to \'master\'.', required=False, default='master')
 parser.add_argument('-b','--branch',help='Instead of deleting the source branch and replacing it with a new branch of the same name, leave the source branch and create a new branch.', required=False)
@@ -29,13 +29,13 @@ parser.add_argument('-r','--remote', help='Specify the remote repository to work
 parser.add_argument('-i','--integration', help='Specify a comma seperated list of (integration) branches to pre-fill the rerere cache with.', required=False)
 parser.add_argument('-v','--verbose', action='store_true', help='Show additional (debug) information.', required=False)
 parser.add_argument('-c','--rerere-cache', action='store_true', help='Disable prefilling of the rerere cache.', required=False, default=False)
-parser.add_argument('source', help='The source branch to recreate.')
+parser.add_argument('source', help='The source branch to recreate.', nargs='?')
 
 args = parser.parse_args()
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
-    
+
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.
         It must be "yes" (the default), "no" or None (meaning
@@ -72,7 +72,7 @@ def branchExists(branch, remote=None):
         ref = "refs/remotes/%s/%s" % (remote, branch)
     else:
         ref = branch if "refs/heads/" in branch else "refs/heads/" + branch
-    
+
     return run(["git", "show-ref", "--verify", "--quiet", ref])
 
 def refExists(ref):
@@ -103,6 +103,17 @@ def getMergedBranches(base, source):
                         branches.append(name)
     return branches
 
+def getCurrentRef():
+  branch = run(['git', 'symbolic-ref', '-q', 'HEAD'])
+  if not branch:
+     original_HEAD = run(['git', 'rev-parse', '--verify', 'HEAD']) 
+     if not original_HEAD:
+        terminate('Not on any branch and no commit yet?')
+  else:
+    branch = branch.replace('refs/heads/','')
+
+  return branch.strip() or original_HEAD.strip()
+
 def run(arguments):
     """ Run an arbitrary command and return True or the output, if any.
         Return False on error.
@@ -126,14 +137,18 @@ def terminate(msg=""):
 if not os.path.exists(".git"):
     terminate('This script can only be run in the GIT root directory.')
 
+if not args.source:
+  args.source = getCurrentRef()
+  print "No source branch specified, using current branch '%s'." % args.source
+
 # Sepcify the target branch
-if args.branch == None:
+if not args.branch:
     args.branch = args.source
 
 # Check if base ref exists
 if not refExists(args.base):
     terminate('Error: base ref does not exist.')
-    
+
 # Discard the source branch and fetch from remote    
 if args.discard:
     if not run(['git', 'fetch', args.remote]):
@@ -156,7 +171,7 @@ if args.branch != args.source and branchExists(args.branch):
     terminate("Cannot create branch %s as it already exists." % args.branch)
 
 # Check if we can pre-fill the rerere cache
-if args.no_rerere_cache:
+if args.rerere_cache:
     print "\n* Pre-filling the rerere cache\n"
 
     # Always learn from the source branch
@@ -167,11 +182,7 @@ if args.no_rerere_cache:
 
     # Fill the rerere cache
     for rerere_branch in rerere_branches:
-        branch = run(['git', 'symbolic-ref', '-q', 'HEAD'])
-        if not branch:
-            original_HEAD = run(['git', 'rev-parse', '--verify', 'HEAD']) 
-            if not original_HEAD:
-                terminate('Not on any branch and no commit yet?')
+        cref = getCurrentRef()
 
         if not os.path.exists(".git/rr-cache"):
             os.makedirs(".git/rr-cache")
@@ -198,10 +209,7 @@ if args.no_rerere_cache:
                         run(['git', 'rerere'])
                     run(['git', 'reset', '-q', '--hard'])
 
-            if not branch:  
-                run(['git', 'checkout', original_HEAD.strip()])
-            else:
-                run(['git', 'checkout', branch.replace('refs/heads/','').strip()])
+            run(['git', 'checkout', cref])
 
 print "1. Processing branch '%s' for merge-commits..." % args.source
 
