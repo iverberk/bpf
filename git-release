@@ -203,7 +203,7 @@ if args.rerere_cache:
                         # Merges cleanly
                         continue
                     if os.listdir(".git/rr-cache"):
-                        run(['git', 'show', '-s', '--pretty=format:"Learning from %h %s"' + commit])
+                        print run(['git', 'show', '-s', '--pretty=format:"Learning from %h %s"', commit])
                         run(['git', 'rerere'])
                         run(['git', 'checkout', '-q', commit, '--', '.'])
                         run(['git', 'rerere'])
@@ -219,14 +219,14 @@ branches = getMergedBranches(args.base, args.source)
 if not branches:
     terminate("No feature branches detected, '%s' matches '%s'." % (args.source, args.base))
 
-if args.list:
-    terminate("Branches to be merged:\n%s" % "\n".join(branches))
-
 # Exclude branches
 if args.exclude:
     for exclude in args.exclude.split(','):
         # Strip remotes/../../ from branch
         branches = [branch for branch in branches if exclude.lower() != re.sub(r'^remotes\/\w+\/([\w\-\/]+)$', r'\1', branch).lower()]
+
+if args.list:
+      terminate("Branches to be merged:\n%s" % "\n".join(branches))
 
 print "\n\
 The following branches will be merged when the new '%s' branch is created:\n\n\
