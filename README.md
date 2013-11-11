@@ -18,11 +18,9 @@ The release command will recreate the release branch based on the previous merge
 
 Invoke the release script by calling `git release`. This command takes several arguments:
 
-**
-
 -h, --help
 
-show a help message
+Show a help message
 
 -a BASE, --base BASE 
 
@@ -54,12 +52,11 @@ Specify a comma seperated list of (integration) branches to pre-fill the rerere 
 
 -v, --verbose
 
-show errors when running Git commands. This is useful for debugging any errors that might occur.
+Show errors when running Git commands. This is useful for debugging any errors that might occur.
 
 -c, --rerere-cache
 
-enable pre-filling of the rerere cache. The 'git release' command will normally abort on any merge conflicts that occur during rebuilding of the release branch. This argument tells the script to first pre-fill the rerere cache based on the source branch and any integration branches that are specified with the -i or --integration options. Enabling this option will resolve most conflicts that you might encounter.
+Enable pre-filling of the rerere cache. The 'git release' command will normally abort on any merge conflicts that occur during rebuilding of the release branch. This argument tells the script to first pre-fill the rerere cache based on the source branch and any integration branches that are specified with the -i or --integration options. Enabling this option will resolve most conflicts that you might encounter.
 
-**
 
 After the rebuild of the release branch has succeeded you can add additional feature branches and (force) push it to the remote.
