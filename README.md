@@ -1,5 +1,9 @@
 # Branch-per-Feature Automation Scripts
 
+## Background
+
+Please visit [my blog post](http://www.ivoverberk.nl/blog/2013/11/08/git-workflow-automated-branch-per-feature/) for more background on the Branch-per-Feature workflow and the usage of these scripts.
+
 ## Installation
 
 Put the 'git-release' and 'git-integrate' scripts somewhere in your path, that's all there is to it! :-)
