@@ -264,8 +264,8 @@ for branch in branches:
     print " - '%s'" % branch
     if not run(['git', 'merge', '--quiet', '--no-ff', '--no-edit', branch]):
         # Check if rerere is enabled
-        rerere_enabled = run(['git', 'config', 'rerere.enabled']).strip()
-        if rerere_enabled == '0':
+        rerere_enabled = run(['git', 'config', 'rerere.enabled'])
+        if not rerere_enabled or rerere_enabled == '0':
             print "Enabling git rerere for this repository"
             run(['git', 'config', 'rerere.enabled', '1'])
         else:
