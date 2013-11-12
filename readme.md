@@ -60,3 +60,33 @@ Enable pre-filling of the rerere cache. The 'git release' command will normally 
 
 
 After the rebuild of the release branch has succeeded you can add additional feature branches and (force) push it to the remote.
+
+### Git integrate
+
+The integrate command will merge a source branch with an integration branch. It provides an easy way for developers to quickly merge their development work with an integration branch.
+
+Invoke the integration script by calling `git integrate`. This command takes several arguments:
+
+-h, --help
+
+Show a help message
+
+-s SOURCE, --source SOURCE
+
+The source branch to merge with the integration branch.
+
+-p, --push            
+
+On a succesful merge push the integration branch to the remote
+
+-d, --discard         
+
+Discard the existing local integration branch and checkout a new integration branch from the remote if one exists. If no remote is specified with -r, the configured remote is used, or origin if none is configured.
+
+-r REMOTE, --remote REMOTE
+
+Specify the remote repository to work with.
+
+-v, --verbose
+
+Show additional (debug) information.
