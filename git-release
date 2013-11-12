@@ -24,7 +24,7 @@ parser.add_argument('-a','--base', help='A reference to the commit from which th
 parser.add_argument('-b','--branch',help='Instead of deleting the source branch and replacing it with a new branch of the same name, leave the source branch and create a new branch.', required=False)
 parser.add_argument('-x','--exclude', help='Specify a comma seperated list of branches to be excluded.', required=False)
 parser.add_argument('-l','--list', action='store_true', help='Process source branch for merge commits and list them. Will not make any changes to any branches.', required=False)
-parser.add_argument('-d','--discard', action='store_true', help='Discard the existing local source branch and checkout a new source branch from the remote if one exists. If no remote is specified with -r, gitbpf will use the configured remote, or origin if none is configured.',required=False)
+parser.add_argument('-D','--no-discard', action='store_true', help='Discard the existing local source branch and checkout a new source branch from the remote if one exists. If no remote is specified with -r, the configured remote is used, or origin if none is configured.', required=False, default=False)
 parser.add_argument('-r','--remote', help='Specify the remote repository to work with. Only works with the -d option.', required=False, default='origin')
 parser.add_argument('-i','--integration', help='Specify a comma seperated list of (integration) branches to pre-fill the rerere cache with.', required=False)
 parser.add_argument('-v','--verbose', action='store_true', help='Show additional (debug) information.', required=False)
@@ -141,7 +141,7 @@ if not args.source:
   args.source = getCurrentRef()
   print "No source branch specified, using current branch '%s'." % args.source
 
-# Sepcify the target branch
+# Specify the target branch
 if not args.branch:
     args.branch = args.source
 
@@ -150,7 +150,7 @@ if not refExists(args.base):
     terminate('Error: base ref does not exist.')
 
 # Discard the source branch and fetch from remote    
-if args.discard:
+if not args.no_discard:
     if not run(['git', 'fetch', args.remote]):
         terminate("Error: Could not fetch from remote '%s' repository." % args.remote)
 
