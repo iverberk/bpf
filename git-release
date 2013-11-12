@@ -245,7 +245,7 @@ print "\n2. Creating backup of '%s', '%s'..." % (args.source, tmp_source)
 if branchExists(tmp_source):
     print "Cannot create branch '%s' as one already exists. To continue, '%s' must be removed." % (tmp_source, tmp_source)
     if query_yes_no("Would you like to forcefully destroy branch '%s' and continue?" % tmp_source, "yes") == 'yes':
-        run(['git', 'brach', '-D', tmp_source])
+        run(['git', 'branch', '-D', tmp_source])
     else:
         terminate('Aborted.')
 
