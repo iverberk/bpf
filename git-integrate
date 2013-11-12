@@ -1,0 +1,149 @@
+#!/usr/bin/env python
+#
+# GIT Branch-by-Feature
+#
+# Integration-branch script
+#
+# @author Ivo Verberk
+
+import argparse
+import subprocess
+import sys
+import re
+import os
+
+prefix = "BPF-PREFIX"
+
+parser = argparse.ArgumentParser(prog='git integrate')
+
+parser.add_argument('-s','--source', help='The source branch to merge with the integration branch.', required=False)
+parser.add_argument('-p','--push', action='store_true', help='Push the integration branch to the remote', required=False, default=False)
+parser.add_argument('-d','--discard', action='store_true', help='Discard the existing local integration branch and checkout a new integration branch from the remote if one exists. If no remote is specified with -r, the configured remote is used, or origin if none is configured.', required=False, default=False)
+parser.add_argument('-r','--remote', help='Specify the remote repository to work with. Only works with the -d option.', required=False, default='origin')
+parser.add_argument('-v','--verbose', action='store_true', help='Show additional (debug) information.', required=False)
+parser.add_argument('integration_branch', help='The integration branch.')
+
+args = parser.parse_args()
+
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is one of "yes" or "no".
+    """
+    valid = {"yes":"yes",   "y":"yes",  "ye":"yes",
+             "no":"no",     "n":"no"}
+    if default == None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while 1:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return default
+        elif choice in valid.keys():
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "\
+                             "(or 'y' or 'n').\n")
+
+def branchExists(branch, remote=None):
+    """ Check if a (remote) branch exists in the repository 
+    """
+    if remote:
+        ref = "refs/remotes/%s/%s" % (remote, branch)
+    else:
+        ref = branch if "refs/heads/" in branch else "refs/heads/" + branch
+
+    return run(["git", "show-ref", "--verify", "--quiet", ref])
+
+def getCurrentBranch():
+  branch = run(['git', 'symbolic-ref', '-q', 'HEAD'])
+  if not branch:
+    terminate('Not on any branch?')
+
+  return branch.replace('refs/heads/','')
+
+def run(arguments):
+    """ Run an arbitrary command and return True or the output, if any.
+        Return False on error.
+    """
+    if args.verbose:
+        print arguments
+
+    try:
+        output = subprocess.check_output(arguments, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        if args.verbose:
+            print e
+        return False
+
+    return output.strip() if output else True
+
+def terminate(msg=""):
+    """ Abort the script with an error message
+    """
+    print msg
+    sys.exit(1)
+
+if not args.source:
+  args.source = getCurrentBranch()
+  print "No source branch specified, using current branch '%s'" % args.source
+
+# Discard the integration branch and fetch from remote    
+if args.discard:
+    if not run(['git', 'fetch', args.remote]):
+        terminate("Error: Could not fetch from remote '%s' repository." % args.remote)
+
+    if branchExists(args.integration_branch, args.remote):
+        if query_yes_no("This will delete your local '%s' branch and create it afresh from the %s remote." % (args.integration_branch, args.remote), "no") == 'no':
+            terminate('Aborted.')
+
+        tmp_source = prefix + '-' + args.integration_branch
+
+        if branchExists(tmp_source):
+            print "Cannot create backup branch '%s' as one already exists. To continue, '%s' must be removed." % (tmp_source, tmp_source)
+            if query_yes_no("Would you like to forcefully destroy branch '%s' and continue?" % tmp_source, "yes") == 'yes':
+                run(['git', 'brach', '-D', tmp_source])
+            else:
+                terminate('Aborted.')
+
+        run(['git', 'branch', '-m', args.integration_branch, tmp_source])
+        run(['git', 'checkout', '-q', args.integration_branch])
+        run(['git', 'branch', '-D', tmp_source])
+
+# Check if the source branch exists
+if not branchExists(args.source):
+    terminate("Cannot recreate branch %s as it doesn't exist." % args.source)
+
+print "Merging branch '%s' into '%s'" % (args.source, args.integration_branch)
+
+run(['git', 'checkout', args.integration_branch])
+if not run(['git', 'merge', '--no-ff', '--quiet', args.source]):
+    print("""
+Merging failed. This could be caused by a merge conflict. Please review the current state of your integration branch and look for any unmerged paths.
+Fix the merge conflicts or abort the merge with 'git merge --abort'
+""")
+    # Check if rerere is enabled
+    rerere_enabled = run(['git', 'config', 'rerere.enabled'])
+    if not rerere_enabled or rerere_enabled == '0':
+        if query_yes_no('Enable git rerere for this repository?', 'yes') == 'yes':
+            run(['git', 'config', 'rerere.enabled', '1'])
+    terminate('Aborting.')
+
+run(['git', 'checkout', '-q', args.source])
+
+if args.push:
+    print "Pushing branch '%s' to '%s'" % (args.integration_branch, args.remote)
+    if not run(['git', 'push', args.remote, args.integration_branch]):
+        print "Push failed. Please check for errors."
