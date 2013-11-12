@@ -87,14 +87,12 @@ def getMergedBranches(base, source):
     merges = run(['git', 'rev-list', '--parents', '--merges', '--reverse', "%s...%s" % (base, source)])
 
     if isinstance(merges, basestring):
-        merges = merges.strip()
-
         for commits in merges.split('\n'):
             parents = re.split('\s',commits)
             parents.pop(0)
             for parent in parents:
-                name = run(['git', 'name-rev', parent, '--name-only']).strip()
-                alt_base = run(['git', 'name-rev', base, '--name-only']).strip()
+                name = run(['git', 'name-rev', parent, '--name-only'])
+                alt_base = run(['git', 'name-rev', base, '--name-only'])
                 if not source in name and not alt_base in name and not re.match('remote\/\w+\/HEAD', name):
                     m = re.search('(.*)~.*', name)
                     if m:
@@ -112,7 +110,7 @@ def getCurrentRef():
   else:
     branch = branch.replace('refs/heads/','')
 
-  return branch.strip() or original_HEAD.strip()
+  return branch or original_HEAD
 
 def run(arguments):
     """ Run an arbitrary command and return True or the output, if any.
@@ -191,7 +189,6 @@ if args.rerere_cache:
         if not merges:
             print "Could not find any merge commits."
         else:
-            merges = merges.strip()
             for commits in merges.split('\n'):
                 parents = re.split('\s',commits)
                 if len(parents) > 2:

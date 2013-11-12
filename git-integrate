@@ -17,7 +17,8 @@ prefix = "BPF-PREFIX"
 parser = argparse.ArgumentParser(prog='git integrate')
 
 parser.add_argument('-s','--source', help='The source branch to merge with the integration branch.', required=False)
-parser.add_argument('-p','--push', action='store_true', help='Push the integration branch to the remote', required=False, default=False)
+parser.add_argument('-p','--push', action='store_true', help='Push the integration branch to the remote.', required=False, default=False)
+parser.add_argument('-c','--check', action='store_true', help='Check if the source branch will merge cleanly with the integration branch.', required=False, default=False)
 parser.add_argument('-d','--discard', action='store_true', help='Discard the existing local integration branch and checkout a new integration branch from the remote if one exists. If no remote is specified with -r, the configured remote is used, or origin if none is configured.', required=False, default=False)
 parser.add_argument('-r','--remote', help='Specify the remote repository to work with. Only works with the -d option.', required=False, default='origin')
 parser.add_argument('-v','--verbose', action='store_true', help='Show additional (debug) information.', required=False)
@@ -125,6 +126,18 @@ if args.discard:
 # Check if the source branch exists
 if not branchExists(args.source):
     terminate("Cannot recreate branch %s as it doesn't exist." % args.source)
+
+if args.check:
+    sys.stdout.write("Checking if branch '%s' merges cleanly with '%s'..." % (args.source, args.integration_branch))
+    merge_base = run(['git', 'merge-base', args.source, args.integration_branch])
+    if merge_base:
+        conflicts = run(['git', 'merge-tree', merge_base, args.source, args.integration_branch])
+        if isinstance(conflicts, basestring):
+            terminate("no!")
+        else:
+            terminate("yes!")
+    else:
+        terminate("These branches have no common ancestor? Aborting.")
 
 print "Merging branch '%s' into '%s'" % (args.source, args.integration_branch)
 
