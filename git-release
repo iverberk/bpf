@@ -112,12 +112,80 @@ def getCurrentRef():
 
   return branch or original_HEAD
 
+def preFillRerere(branches):
+    print "\n* Pre-filling the rerere cache\n"
+
+    rerere_branches = [branches]
+    if args.integration:
+        # Additionally, learn from any integration branches
+        rerere_branches += args.integration.split(',')
+
+    cref = getCurrentRef()
+
+    # Fill the rerere cache
+    for rerere_branch in rerere_branches:
+        if not os.path.exists(".git/rr-cache"):
+            os.makedirs(".git/rr-cache")
+
+        merges = run(['git', 'rev-list', '--parents', args.base + '..' + rerere_branch])
+        if not merges:
+            print "Could not find any merge commits."
+        else:
+            for commits in merges.split('\n'):
+                parents = re.split('\s',commits)
+                if len(parents) > 2:
+                    commit = parents[0]
+                    parent1 = parents[1]
+                    other_parents = parents[2]
+                    run(['git', 'checkout', '-q', parent1 + '^0'])
+                    if run(['git', 'merge', '-q', other_parents]):
+                        # Merges cleanly
+                        continue
+                    try:
+                        if os.path.getsize(".git/MERGE_RR") > 0:
+                            print run(['git', 'show', '-s', '--pretty=format:"Learning from %h %s"', commit])
+                            run(['git', 'rerere'])
+                            run(['git', 'checkout', '-q', commit, '--', '.'])
+                            run(['git', 'rerere'])
+                    except:
+                        pass
+                    run(['git', 'reset', '-q', '--hard'])
+
+    run(['git', 'checkout', cref])
+
+def mergeBranch(branch):
+    if not run(['git', 'merge', '--quiet', '--no-ff', '--no-edit', branch]):
+        # Automatic merge failed
+        # Check if rerere is enabled
+        rerere_enabled = run(['git', 'config', 'rerere.enabled'])
+        if not rerere_enabled or rerere_enabled == '0':
+            print "Enabling git rerere for this repository"
+            run(['git', 'config', 'rerere.enabled', '1'])
+
+        print "Possible conflict found, checking rerere status ->",
+        status = run(['git', 'rerere', 'status'])
+
+        # We expect True, show error on False or string or if rerere wasn't enabled
+        if not rerere_enabled or rerere_enabled == '0' or isinstance(status, basestring) or not status:
+            return False
+        else:
+            run(['git', 'commit', '-a', '--no-edit'])
+            print "conflict has been resolved automatically."
+            return True
+    else:
+        return True
+
 def run(arguments):
     """ Run an arbitrary command and return True or the output, if any.
         Return False on error.
     """
+    if args.verbose:
+        print arguments
+
     try:
         output = subprocess.check_output(arguments, stderr=subprocess.STDOUT)
+        if args.verbose:
+            print "output: " + output 
     except subprocess.CalledProcessError as e:
         if args.verbose:
             print e
@@ -170,43 +238,7 @@ if args.branch != args.source and branchExists(args.branch):
 
 # Check if we can pre-fill the rerere cache
 if args.rerere_cache:
-    print "\n* Pre-filling the rerere cache\n"
-
-    # Always learn from the source branch
-    rerere_branches = [args.source]
-    if args.integration:
-        # Additionally, learn from any integration branches
-        rerere_branches += args.integration.split(',')
-
-    # Fill the rerere cache
-    for rerere_branch in rerere_branches:
-        cref = getCurrentRef()
-
-        if not os.path.exists(".git/rr-cache"):
-            os.makedirs(".git/rr-cache")
-
-        merges = run(['git', 'rev-list', '--parents', args.base + '..' + rerere_branch])
-        if not merges:
-            print "Could not find any merge commits."
-        else:
-            for commits in merges.split('\n'):
-                parents = re.split('\s',commits)
-                if len(parents) > 2:
-                    commit = parents[0]
-                    parent1 = parents[1]
-                    other_parents = parents[2]
-                    run(['git', 'checkout', '-q', parent1 + '^0'])
-                    if run(['git', 'merge', '-q', other_parents]):
-                        # Merges cleanly
-                        continue
-                    if os.listdir(".git/rr-cache"):
-                        print run(['git', 'show', '-s', '--pretty=format:"Learning from %h %s"', commit])
-                        run(['git', 'rerere'])
-                        run(['git', 'checkout', '-q', commit, '--', '.'])
-                        run(['git', 'rerere'])
-                    run(['git', 'reset', '-q', '--hard'])
-
-            run(['git', 'checkout', cref])
+    preFillRerere(args.source)
 
 print "1. Processing branch '%s' for merge-commits..." % args.source
 
@@ -259,31 +291,21 @@ print "4. Merging in feature branches..."
 
 for branch in branches:
     print " - '%s'" % branch
-    if not run(['git', 'merge', '--quiet', '--no-ff', '--no-edit', branch]):
-        # Check if rerere is enabled
-        rerere_enabled = run(['git', 'config', 'rerere.enabled'])
-        if not rerere_enabled or rerere_enabled == '0':
-            print "Enabling git rerere for this repository"
-            run(['git', 'config', 'rerere.enabled', '1'])
+    if not mergeBranch(branch):
+        print "There is a merge conflict with branch '%s' that has no rerere yet." % branch
+        if query_yes_no("Would you like to analyse the repository for previous resolutions?", "yes") == 'yes':
+            # Get out of the merge state
+            run(['git', 'merge', '--abort'])
+            preFillRerere(tmp_source)
+            print "\n - '%s'" % branch
+            if mergeBranch(branch):
+                continue
 
-        print "Possible conflict found, checking rerere status ->",
-        status = run(['git', 'rerere', 'status'])
-
-        # We expect True, show error on False or string or if rerere wasn't enabled
-        if not rerere_enabled or rerere_enabled == '0' or isinstance(status, basestring) or not status:
-            print "conflict could not be resolved automatically."
-            print
-            print "There is a merge conflict with branch '%s' that has no rerere." % args.branch
-            print "Record a resolution by resolving the conflict."
-            print "Then run the following command to return your repository to its original state."
-            print
-            print "git checkout %s && git branch -D %s && git branch -m %s" % (tmp_source, args.branch, args.branch)
-            print
-            print "If you do not want to resolve the conflict, it is safe to just run the above command to restore your repository to the state it was in before executing this command."
-            terminate()
-        else:
-            run(['git', 'commit', '-a', '--no-edit'])
-            print "conflict has been resolved automatically."
+        print "Unfortunately there is no automatic resolution available. You may fix the conflict manually or abort the merge with 'git merge --abort'."
+        print "Then run the following command to return your repository to its original state."
+        print
+        print "git checkout %s && git branch -D %s && git branch -m %s" % (tmp_source, args.branch, args.branch)
+        terminate()
 
 print "5. Cleaning up temporary branches ('%s')" % tmp_source
 
