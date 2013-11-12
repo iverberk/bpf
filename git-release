@@ -268,12 +268,12 @@ for branch in branches:
         if not rerere_enabled or rerere_enabled == '0':
             print "Enabling git rerere for this repository"
             run(['git', 'config', 'rerere.enabled', '1'])
-        else:
-            print "Possible conflict found, checking rerere status ->",
-            status = run(['git', 'rerere', 'status'])
+
+        print "Possible conflict found, checking rerere status ->",
+        status = run(['git', 'rerere', 'status'])
 
         # We expect True, show error on False or string or if rerere wasn't enabled
-        if rerere_enabled == '0' or isinstance(status, basestring) or not status:
+        if not rerere_enabled or rerere_enabled == '0' or isinstance(status, basestring) or not status:
             print "conflict could not be resolved automatically."
             print
             print "There is a merge conflict with branch '%s' that has no rerere." % args.branch
