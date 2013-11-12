@@ -75,6 +75,10 @@ Show a help message
 
 The source branch to merge with the integration branch.
 
+-c, --check
+
+Check if the source branch will merge cleanly with the integration branch.
+
 -p, --push            
 
 On a succesful merge push the integration branch to the remote
