@@ -125,7 +125,7 @@ def run(arguments):
             print e
         return False
 
-    return output if output else True
+    return output.strip() if output else True
 
 def terminate(msg=""):
     """ Abort the script with an error message
@@ -268,7 +268,7 @@ for branch in branches:
         if rerere_enabled == '0':
             print "Enabling git rerere for this repository"
             run(['git', 'config', 'rerere.enabled', '1'])
-        else:    
+        else:
             print "Possible conflict found, checking rerere status ->",
             status = run(['git', 'rerere', 'status'])
 
