@@ -66,17 +66,17 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 def branchExists(branch, remote=None):
-    """ Check if a (remote) branch exists in the repository 
+    """ Check if a (remote) branch exists in the repository
     """
     if remote:
         ref = "refs/remotes/%s/%s" % (remote, branch)
     else:
         ref = branch if "refs/heads/" in branch else "refs/heads/" + branch
 
-    return run(["git", "show-ref", "--verify", "--quiet", ref])
+    return run(["git", "show-ref", "--verify", ref])
 
 def refExists(ref):
-    """ Check if a ref exists in the repository 
+    """ Check if a ref exists in the repository
     """
     return run(["git", "show-ref", "--tags", "--heads", ref])
 
@@ -104,7 +104,7 @@ def getMergedBranches(base, source):
 def getCurrentRef():
   branch = run(['git', 'symbolic-ref', '-q', 'HEAD'])
   if not branch:
-     original_HEAD = run(['git', 'rev-parse', '--verify', 'HEAD']) 
+     original_HEAD = run(['git', 'rev-parse', '--verify', 'HEAD'])
      if not original_HEAD:
         terminate('Not on any branch and no commit yet?')
   else:
@@ -185,7 +185,7 @@ def run(arguments):
     try:
         output = subprocess.check_output(arguments, stderr=subprocess.STDOUT)
         if args.verbose:
-            print "output: " + output 
+            print "output: " + output
     except subprocess.CalledProcessError as e:
         if args.verbose:
             print e
@@ -199,7 +199,7 @@ def terminate(msg=""):
     print msg
     sys.exit(1)
 
-# Check if we are in the root of the GIT repositoru
+# Check if we are in the root of the GIT repository
 if not os.path.exists(".git"):
     terminate('This script can only be run in the GIT root directory.')
 
@@ -215,7 +215,7 @@ if not args.branch:
 if not refExists(args.base):
     terminate('Error: base ref does not exist.')
 
-# Discard the source branch and fetch from remote    
+# Discard the source branch and fetch from remote
 if not args.no_discard:
     if not run(['git', 'fetch', args.remote]):
         terminate("Error: Could not fetch from remote '%s' repository." % args.remote)
@@ -226,7 +226,7 @@ if not args.no_discard:
 
         run(['git', 'checkout', args.base])
         run(['git', 'branch', '-D', args.source])
-        run(['git', 'checkout', args.source])
+        run(['git', 'checkout', '-b', args.source, args.remote + '/' + args.source])
 
 # Check if the source branch exists
 if not branchExists(args.source):
