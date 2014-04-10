@@ -92,8 +92,12 @@ def getMergedBranches(base, source):
             parents.pop(0)
             for parent in parents:
                 name = run(['git', 'name-rev', parent, '--name-only'])
-                alt_base = run(['git', 'name-rev', base, '--name-only'])
-                if not source in name and not alt_base in name and not re.match('remote\/\w+\/HEAD', name):
+
+	        # Exclude this parent if it is equal to the base
+	        if run(['git', 'rev-parse', base + "^{commit}"]) == parent:
+		    continue
+
+                if not source in name and not re.match('remote\/\w+\/HEAD', name):
                     m = re.search('(.*)~.*', name)
                     if m:
                         name = m.group(1)
